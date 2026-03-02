@@ -71,8 +71,7 @@ app.post("/api/topics/bulk", isAdmin, async (req, res) => {
       return res.status(400).json({ error: "Dữ liệu không hợp lệ" });
     }
 
-    // Tiền xử lý: Tự động điền "Chưa cập nhật" nếu người dùng gửi file có ô trống
-    // Giúp loại bỏ hoàn toàn lỗi NOT NULL của Database
+    // 1. Tiền xử lý: Tự động điền "Chưa cập nhật" nếu người dùng gửi file có ô trống
     const safeTopics = topics.map(t => ({
       title: t.title || "Chưa cập nhật",
       author: t.author || "Chưa cập nhật",
@@ -81,15 +80,20 @@ app.post("/api/topics/bulk", isAdmin, async (req, res) => {
       level: t.level || "Chưa cập nhật"
     }));
 
-    // Kỹ thuật GỘP 2000 dòng thành 1 lệnh SQL duy nhất (Siêu nhanh)
-    // Chuyển JSON thành Recordset của PostgreSQL
-    await sql`
-      INSERT INTO topics (title, author, major, course, level)
-      SELECT title, author, major, course, level
-      FROM json_to_recordset(${JSON.stringify(safeTopics)}::json) 
-      AS x(title text, author text, major text, course text, level text)
-    `;
-    
+    // 2. Kỹ thuật CHUNKING: Chia mẻ 100 dòng/lần để tránh sập Database và tránh Timeout
+    const BATCH_SIZE = 100;
+    for (let i = 0; i < safeTopics.length; i += BATCH_SIZE) {
+      const batch = safeTopics.slice(i, i + BATCH_SIZE);
+      
+      // Chuyển lô 100 dòng này thành 1 lệnh SQL siêu tốc duy nhất
+      await sql`
+        INSERT INTO topics (title, author, major, course, level)
+        SELECT title, author, major, course, level
+        FROM json_to_recordset(${JSON.stringify(batch)}::json) 
+        AS x(title text, author text, major text, course text, level text)
+      `;
+    }
+
     res.json({ success: true, count: safeTopics.length });
   } catch (error) {
     console.error("Bulk Import Error:", error);
