@@ -67,21 +67,33 @@ app.put("/api/topics/:id", isAdmin, async (req, res) => {
 app.post("/api/topics/bulk", isAdmin, async (req, res) => {
   try {
     const topics = req.body;
-    if (!Array.isArray(topics)) {
-      return res.status(400).json({ error: "Invalid data format" });
+    if (!Array.isArray(topics) || topics.length === 0) {
+      return res.status(400).json({ error: "Dữ liệu không hợp lệ" });
     }
 
-    // Chạy song song các lệnh insert cho danh sách lớn
-    const promises = topics.map((item) => sql`
-      INSERT INTO topics (title, author, major, course, level) 
-      VALUES (${item.title}, ${item.author}, ${item.major}, ${item.course}, ${item.level})
-    `);
+    // Tiền xử lý: Tự động điền "Chưa cập nhật" nếu người dùng gửi file có ô trống
+    // Giúp loại bỏ hoàn toàn lỗi NOT NULL của Database
+    const safeTopics = topics.map(t => ({
+      title: t.title || "Chưa cập nhật",
+      author: t.author || "Chưa cập nhật",
+      major: t.major || "Chưa cập nhật",
+      course: t.course || "Chưa cập nhật",
+      level: t.level || "Chưa cập nhật"
+    }));
+
+    // Kỹ thuật GỘP 2000 dòng thành 1 lệnh SQL duy nhất (Siêu nhanh)
+    // Chuyển JSON thành Recordset của PostgreSQL
+    await sql`
+      INSERT INTO topics (title, author, major, course, level)
+      SELECT title, author, major, course, level
+      FROM json_to_recordset(${JSON.stringify(safeTopics)}::json) 
+      AS x(title text, author text, major text, course text, level text)
+    `;
     
-    await Promise.all(promises);
-    res.json({ success: true, count: topics.length });
+    res.json({ success: true, count: safeTopics.length });
   } catch (error) {
     console.error("Bulk Import Error:", error);
-    res.status(500).json({ error: "Failed to import topics" });
+    res.status(500).json({ error: "Lỗi lưu dữ liệu hàng loạt" });
   }
 });
 
