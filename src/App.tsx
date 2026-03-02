@@ -1019,7 +1019,7 @@ export default function App() {
             </div>
             <div className="md:text-right">
               <p className="text-blue-200 text-sm mb-2">© 2024 Phần mềm Check tên đề tài UEB</p>
-              <p className="text-blue-300 text-xs">Phát triển bởi Phòng Đào tạo & AI Team</p>
+              <p className="text-blue-300 text-xs">Phát triển bởi Nguyễn Tiến Minh + Khang</p>
             </div>
           </div>
         </div>
