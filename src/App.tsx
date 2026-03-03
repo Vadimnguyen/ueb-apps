@@ -162,8 +162,13 @@ const GuestModule = ({ topics, settings }: { topics: Topic[], settings: Settings
           Đề tài dự kiến: "${inputTitle}"
           Cấp đào tạo dự kiến: "${selectedLevel}"
           
-          Danh sách đề tài đã thực hiện:
+          Danh sách đề tài đã thực hiện (gồm ${topics.length} đề tài):
           ${topics.map(t => `- ID: ${t.id}, Title: "${t.title}", Major: "${t.major}", Course: "${t.course}", Level: "${t.level}"`).join('\n')}
+          
+          LỆNH TỐI QUAN TRỌNG DÀNH CHO BẠN (BẮT BUỘC TUÂN THỦ):
+          1. Dù danh sách có dài đến đâu, bạn BẮT BUỘC phải quét toàn bộ để tìm ra các đề tài tương đồng nhất.
+          2. NẾU điểm trùng lặp (score) bạn đánh giá là > 30%, BẮT BUỘC mảng "similarTopics" phải chứa chính xác 3 đề tài giống nhất. 
+          3. TUYỆT ĐỐI KHÔNG ĐƯỢC lười biếng bỏ qua mảng "similarTopics" hoặc trả về mảng rỗng nếu score > 30%. Đây là lỗi nghiêm trọng.
           
           Hãy trả về kết quả dưới dạng JSON với cấu trúc:
           {
@@ -213,10 +218,19 @@ const GuestModule = ({ topics, settings }: { topics: Topic[], settings: Settings
         }
       });
 
-      const data = JSON.parse(response.text || '{}');
+      let rawText = response.text || '{}';
+      rawText = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
+      const data = JSON.parse(rawText);
+      
+      // Khóa chống sập: Đảm bảo similarTopics luôn là mảng
+      if (!data.similarTopics) {
+        data.similarTopics = [];
+      }
+      
       setResult(data);
     } catch (error) {
       console.error("AI Analysis Error:", error);
+      alert("Hệ thống AI đang xử lý quá nhiều dữ liệu. Vui lòng thử lại sau giây lát.");
     } finally {
       setIsAnalyzing(false);
     }
@@ -368,11 +382,11 @@ const GuestModule = ({ topics, settings }: { topics: Topic[], settings: Settings
                 </div>
               </div>
 
-              {result.similarTopics.length > 0 && (
+              {result.similarTopics && result.similarTopics.length > 0 && (
                 <div className="bg-white rounded-3xl border border-zinc-200 overflow-hidden shadow-sm">
                   <div className="px-8 py-5 border-b border-zinc-100 bg-zinc-50/50 flex justify-between items-center">
                     <h3 className="font-bold text-zinc-900">Các đề tài có nội dung tương đồng</h3>
-                    <span className="text-xs font-medium text-zinc-400 bg-zinc-200 px-2 py-1 rounded uppercase">Top 3 kết quả</span>
+                    <span className="text-xs font-medium text-zinc-400 bg-zinc-200 px-2 py-1 rounded uppercase">Top kết quả</span>
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
