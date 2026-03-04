@@ -150,9 +150,11 @@ const GuestModule = ({ topics, settings }: { topics: Topic[], settings: Settings
     setIsAnalyzing(true);
     
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      // ĐÃ SỬA: Dùng import.meta.env để Vite có thể đọc được API Key
+      const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
+      
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-1.5-pro", // ĐÃ SỬA: Nâng cấp lên Model xử lý siêu tốc, không bị quá tải
         contents: `
           Bạn là một chuyên gia đánh giá đề tài nghiên cứu khoa học tại Trường Đại học Kinh tế - ĐHQGHN (UEB). 
           Nhiệm vụ: Đánh giá mức độ trùng lặp của đề tài dự kiến với danh sách các đề tài đã thực hiện.
@@ -228,9 +230,9 @@ const GuestModule = ({ topics, settings }: { topics: Topic[], settings: Settings
       }
       
       setResult(data);
-    } catch (error) {
+    } catch (error: any) {
       console.error("AI Analysis Error:", error);
-      alert("Hệ thống AI đang xử lý quá nhiều dữ liệu. Vui lòng thử lại sau giây lát.");
+      alert("Lỗi kết nối AI: " + (error.message || "Không rõ nguyên nhân. Vui lòng F5 tải lại trang."));
     } finally {
       setIsAnalyzing(false);
     }
